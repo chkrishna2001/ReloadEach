@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011">
+  <Metadata>
+    <Identity Id="ReloadEach" Version="0.1" Language="en-US" Publisher="You"/>
+    <DisplayName>ReloadEach</DisplayName>
+    <Description>Unload and reload each project sequentially with a configurable delay.</Description>
+    <Icon>Images\Icon-64x64.png</Icon>
+    <MoreInfo>https://example.com</MoreInfo>
+  </Metadata>
+  <Installation>
+    <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="16.0" />
+    <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="17.0" />
+    <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="18.0" />
+  </Installation>
+  <Assets>
+    <Asset Type="Microsoft.VisualStudio.VsPackage" Path="|%CurrentProject%;PkgdefProjectOutputGroup|" />
+  </Assets>
+</PackageManifest>

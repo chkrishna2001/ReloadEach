@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CommandTable xmlns="http://schemas.microsoft.com/VisualStudio/2005-10-18/CommandTable">
+  <Extern href="stdidcmd.h" />
+  <Extern href="vsshlids.h" />
+
+  <Bitmaps>
+    <Bitmap guid="guidImages" href="..\Images\Icon-16x16.png" usedList="imgReloadEach" />
+  </Bitmaps>
+
+  <Commands>
+    <Groups>
+      <Group guid="{9f3c8f3a-7c1d-4b2a-9c9f-000000000003}" id="MyMenuGroup" priority="0x0600">
+        <Parent guid="guidSHLMainMenu" id="IDG_VS_MENU_TOOLS" />
+      </Group>
+    </Groups>
+    <Buttons>
+      <Button guid="{9f3c8f3a-7c1d-4b2a-9c9f-000000000003}" id="0x0100" priority="0x0100" type="Button">
+        <Parent guid="{9f3c8f3a-7c1d-4b2a-9c9f-000000000003}" id="MyMenuGroup" />
+        <Icon guid="guidImages" id="imgReloadEach" />
+        <Strings>
+          <ButtonText>Reload Each Project</ButtonText>
+        </Strings>
+      </Button>
+      <Button guid="{9f3c8f3a-7c1d-4b2a-9c9f-000000000003}" id="0x0101" priority="0x0101" type="Button">
+        <Parent guid="{9f3c8f3a-7c1d-4b2a-9c9f-000000000003}" id="MyMenuGroup" />
+        <Strings>
+          <ButtonText>Cancel ReloadEach</ButtonText>
+        </Strings>
+      </Button>
+    </Buttons>
+  </Commands>
+
+  <Symbols>
+    <GuidSymbol name="guidReloadEachCmdSet" value="9f3c8f3a-7c1d-4b2a-9c9f-000000000003">
+      <IDSymbol name="MyMenuGroup" value="0x1020" />
+      <IDSymbol name="cmdidReloadEach" value="0x0100" />
+      <IDSymbol name="cmdidCancelReloadEach" value="0x0101" />
+    </GuidSymbol>
+
+    <GuidSymbol name="guidImages" value="9f3c8f3a-7c1d-4b2a-9c9f-000000000004">
+      <IDSymbol name="imgReloadEach" value="1" />
+    </GuidSymbol>
+  </Symbols>
+</CommandTable>

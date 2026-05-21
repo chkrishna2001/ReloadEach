@@ -1,0 +1,22 @@
+# Visual Studio / VSIX build output
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+*.cache
+*.VC.db
+*.VC.VC.opendb
+*.aps
+*.pdb
+*.vs/
+
+# Build artifacts from local validation
+build-output*.txt
+
+# NuGet
+packages/
+*.nupkg
+
+# OS files
+Thumbs.db
+Desktop.ini

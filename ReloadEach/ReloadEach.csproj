@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AssemblyName>ReloadEach</AssemblyName>
+    <RootNamespace>ReloadEach</RootNamespace>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <SignAssembly>false</SignAssembly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.VisualStudio.SDK" Version="16.10.31321.278" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="source.extension.vsixmanifest" />
+    <None Include="Images\Icon-16x16.png" />
+    <None Include="Images\Icon-32x32.png" />
+    <None Include="Images\Icon-64x64.png" />
+    <None Include="Images\ReloadEach_32x.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <VsctCompile Include="Commands\Commands.vsct" />
+  </ItemGroup>
+
+</Project>
