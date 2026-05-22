@@ -3,42 +3,80 @@
   <Extern href="stdidcmd.h" />
   <Extern href="vsshlids.h" />
 
-  <Bitmaps>
-    <Bitmap guid="guidImages" href="..\Images\Icon-16x16.png" usedList="imgReloadEach" />
-  </Bitmaps>
-
-  <Commands>
+  <Commands package="guidReloadEachPkg">
     <Groups>
-      <Group guid="{9f3c8f3a-7c1d-4b2a-9c9f-000000000003}" id="MyMenuGroup" priority="0x0600">
-        <Parent guid="guidSHLMainMenu" id="IDG_VS_MENU_TOOLS" />
+      <Group guid="guidReloadEachCmdSet" id="ReloadEachMenuGroup" priority="0x0600">
+        <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_TOOLS" />
+      </Group>
+      <Group guid="guidReloadEachCmdSet" id="ReloadEachStandardToolbarGroup" priority="0x0950">
+        <Parent guid="guidSHLMainMenu" id="IDG_VS_TOOLSB_RUNBUILD" />
+      </Group>
+      <Group guid="guidReloadEachCmdSet" id="ReloadEachSolutionExplorerToolbarGroup" priority="0x0400">
+        <Parent guid="guidSHLMainMenu" id="IDG_VS_TOOLBAR_PROJWIN_NAVIGATION" />
       </Group>
     </Groups>
+
     <Buttons>
-      <Button guid="{9f3c8f3a-7c1d-4b2a-9c9f-000000000003}" id="0x0100" priority="0x0100" type="Button">
-        <Parent guid="{9f3c8f3a-7c1d-4b2a-9c9f-000000000003}" id="MyMenuGroup" />
-        <Icon guid="guidImages" id="imgReloadEach" />
+      <Button guid="guidReloadEachCmdSet" id="cmdidReloadEach" priority="0x0100" type="Button">
+        <Parent guid="guidReloadEachCmdSet" id="ReloadEachMenuGroup" />
+        <Icon guid="guidReloadEachImages" id="bmpReloadEach" />
+        <CommandFlag>IconAndText</CommandFlag>
         <Strings>
-          <ButtonText>Reload Each Project</ButtonText>
+          <ButtonText>Reload All Projects</ButtonText>
         </Strings>
       </Button>
-      <Button guid="{9f3c8f3a-7c1d-4b2a-9c9f-000000000003}" id="0x0101" priority="0x0101" type="Button">
-        <Parent guid="{9f3c8f3a-7c1d-4b2a-9c9f-000000000003}" id="MyMenuGroup" />
+
+      <Button guid="guidReloadEachCmdSet" id="cmdidReloadSelectedProjects" priority="0x0100" type="Button">
+        <Parent guid="guidSHLMainMenu" id="IDG_VS_CTXT_PROJECT_UNLOADRELOAD" />
+        <Icon guid="guidReloadEachImages" id="bmpReloadEach" />
+        <CommandFlag>IconAndText</CommandFlag>
+        <Strings>
+          <ButtonText>Reload Selected Projects</ButtonText>
+        </Strings>
+      </Button>
+
+      <Button guid="guidReloadEachCmdSet" id="cmdidCancelReloadEach" priority="0x0101" type="Button">
+        <Parent guid="guidReloadEachCmdSet" id="ReloadEachMenuGroup" />
         <Strings>
           <ButtonText>Cancel ReloadEach</ButtonText>
         </Strings>
       </Button>
     </Buttons>
+
+    <Bitmaps>
+      <Bitmap guid="guidReloadEachImages" href="..\Images\Icon-16x16.png" usedList="bmpReloadEach" />
+    </Bitmaps>
   </Commands>
 
+  <CommandPlacements>
+    <CommandPlacement guid="guidReloadEachCmdSet" id="cmdidReloadEach" priority="0x0100">
+      <Parent guid="guidSHLMainMenu" id="IDG_VS_CTXT_SOLUTION_BUILD" />
+    </CommandPlacement>
+    <CommandPlacement guid="guidReloadEachCmdSet" id="cmdidReloadSelectedProjects" priority="0x0100">
+      <Parent guid="guidSHLMainMenu" id="IDG_VS_CTXT_MULTIPROJ_BUILD" />
+    </CommandPlacement>
+    <CommandPlacement guid="guidReloadEachCmdSet" id="cmdidReloadEach" priority="0x0100">
+      <Parent guid="guidReloadEachCmdSet" id="ReloadEachStandardToolbarGroup" />
+    </CommandPlacement>
+    <CommandPlacement guid="guidReloadEachCmdSet" id="cmdidReloadEach" priority="0x0100">
+      <Parent guid="guidReloadEachCmdSet" id="ReloadEachSolutionExplorerToolbarGroup" />
+    </CommandPlacement>
+  </CommandPlacements>
+
   <Symbols>
-    <GuidSymbol name="guidReloadEachCmdSet" value="9f3c8f3a-7c1d-4b2a-9c9f-000000000003">
-      <IDSymbol name="MyMenuGroup" value="0x1020" />
+    <GuidSymbol name="guidReloadEachPkg" value="{d3b8a7f4-9b1a-4c2f-8d1e-000000000002}" />
+
+    <GuidSymbol name="guidReloadEachCmdSet" value="{9f3c8f3a-7c1d-4b2a-9c9f-000000000003}">
+      <IDSymbol name="ReloadEachMenuGroup" value="0x1020" />
+      <IDSymbol name="ReloadEachStandardToolbarGroup" value="0x1023" />
+      <IDSymbol name="ReloadEachSolutionExplorerToolbarGroup" value="0x1024" />
       <IDSymbol name="cmdidReloadEach" value="0x0100" />
+      <IDSymbol name="cmdidReloadSelectedProjects" value="0x0102" />
       <IDSymbol name="cmdidCancelReloadEach" value="0x0101" />
     </GuidSymbol>
 
-    <GuidSymbol name="guidImages" value="9f3c8f3a-7c1d-4b2a-9c9f-000000000004">
-      <IDSymbol name="imgReloadEach" value="1" />
+    <GuidSymbol name="guidReloadEachImages" value="{4a45a4c4-9c46-41b1-9071-000000000005}">
+      <IDSymbol name="bmpReloadEach" value="1" />
     </GuidSymbol>
   </Symbols>
 </CommandTable>

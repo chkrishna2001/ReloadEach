@@ -12,6 +12,9 @@
 
 # Build artifacts from local validation
 build-output*.txt
+ReloadEach/build.log
+ReloadEach/\[Content_Types\].xml
+ReloadEach/extension.vsixmanifest
 
 # NuGet
 packages/

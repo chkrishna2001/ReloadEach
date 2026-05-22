@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
 using System.Threading;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
@@ -12,6 +14,7 @@ namespace ReloadEach.Commands
     {
         public const int StartCommandId = 0x0100;
         public const int CancelCommandId = 0x0101;
+        public const int ReloadSelectedCommandId = 0x0102;
 
         public static readonly Guid CommandSet = new Guid("9f3c8f3a-7c1d-4b2a-9c9f-000000000003");
 
@@ -23,6 +26,7 @@ namespace ReloadEach.Commands
 
         private readonly AsyncPackage package;
         private readonly OleMenuCommand startCommand;
+        private readonly OleMenuCommand reloadSelectedCommand;
         private readonly OleMenuCommand cancelCommand;
         private IVsOutputWindowPane outputPane;
 
@@ -31,12 +35,14 @@ namespace ReloadEach.Commands
             this.package = package ?? throw new ArgumentNullException(nameof(package));
 
             this.startCommand = new OleMenuCommand(this.ExecuteStart, new CommandID(CommandSet, StartCommandId));
+            this.reloadSelectedCommand = new OleMenuCommand(this.ExecuteReloadSelected, new CommandID(CommandSet, ReloadSelectedCommandId));
             this.cancelCommand = new OleMenuCommand(this.ExecuteCancel, new CommandID(CommandSet, CancelCommandId))
             {
                 Enabled = false
             };
 
             commandService.AddCommand(this.startCommand);
+            commandService.AddCommand(this.reloadSelectedCommand);
             commandService.AddCommand(this.cancelCommand);
         }
 
@@ -53,7 +59,19 @@ namespace ReloadEach.Commands
             new ReloadEachCommand(package, commandService);
         }
 
-        private void ExecuteStart(object sender, EventArgs e)
+        [SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "OleMenuCommand requires an EventHandler; the method catches all expected exceptions.")]
+        private async void ExecuteStart(object sender, EventArgs e)
+        {
+            await ExecuteReloadAsync(ReloadScope.AllProjects);
+        }
+
+        [SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "OleMenuCommand requires an EventHandler; the method catches all expected exceptions.")]
+        private async void ExecuteReloadSelected(object sender, EventArgs e)
+        {
+            await ExecuteReloadAsync(ReloadScope.SelectedProjects);
+        }
+
+        private async System.Threading.Tasks.Task ExecuteReloadAsync(ReloadScope reloadScope)
         {
             if (Interlocked.CompareExchange(ref isRunning, 1, 0) != 0)
             {
@@ -67,40 +85,37 @@ namespace ReloadEach.Commands
                 currentCancellationSource = cancellationSource;
             }
 
-            ThreadHelper.ThrowIfNotOnUIThread();
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
             this.startCommand.Enabled = false;
+            this.reloadSelectedCommand.Enabled = false;
             this.cancelCommand.Enabled = true;
 
-            var runningTask = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+            try
             {
-                try
+                await RunReloadEachAsync(reloadScope, cancellationSource.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                await WriteToOutputAsync("ReloadEach canceled.");
+            }
+            catch (Exception ex)
+            {
+                await WriteToOutputAsync("ReloadEach failed: " + ex.Message);
+            }
+            finally
+            {
+                lock (RunGate)
                 {
-                    await RunReloadEachAsync(cancellationSource.Token);
+                    currentCancellationSource?.Dispose();
+                    currentCancellationSource = null;
                 }
-                catch (OperationCanceledException)
-                {
-                    await WriteToOutputAsync("ReloadEach canceled.");
-                }
-                catch (Exception ex)
-                {
-                    await WriteToOutputAsync("ReloadEach failed: " + ex.Message);
-                }
-                finally
-                {
-                    lock (RunGate)
-                    {
-                        currentCancellationSource?.Dispose();
-                        currentCancellationSource = null;
-                    }
 
-                    await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
-                    this.startCommand.Enabled = true;
-                    this.cancelCommand.Enabled = false;
-                    Interlocked.Exchange(ref isRunning, 0);
-                }
-            });
-
-            GC.KeepAlive(runningTask);
+                await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync();
+                this.startCommand.Enabled = true;
+                this.reloadSelectedCommand.Enabled = true;
+                this.cancelCommand.Enabled = false;
+                Interlocked.Exchange(ref isRunning, 0);
+            }
         }
 
         private void ExecuteCancel(object sender, EventArgs e)
@@ -121,7 +136,7 @@ namespace ReloadEach.Commands
             _ = WriteToOutputAsync("Cancellation requested.");
         }
 
-        private async System.Threading.Tasks.Task RunReloadEachAsync(CancellationToken cancellationToken)
+        private async System.Threading.Tasks.Task RunReloadEachAsync(ReloadScope reloadScope, CancellationToken cancellationToken)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
@@ -138,14 +153,21 @@ namespace ReloadEach.Commands
             var options = (Options.ReloadEachOptionsPage)this.package.GetDialogPage(typeof(Options.ReloadEachOptionsPage));
             int delayMs = Math.Max(0, options?.DelaySeconds ?? 2) * 1000;
 
-            var projects = await GetProjectsAsync(solution, cancellationToken);
+            var projects = reloadScope == ReloadScope.SelectedProjects
+                ? await GetSelectedProjectsAsync(this.package, cancellationToken)
+                : await GetProjectsAsync(solution, cancellationToken);
+
             if (projects.Count == 0)
             {
-                await WriteToOutputAsync("No projects were found in the solution.");
+                string message = reloadScope == ReloadScope.SelectedProjects
+                    ? "No selected projects were found."
+                    : "No projects were found in the solution.";
+                await WriteToOutputAsync(message);
                 return;
             }
 
-            await WriteToOutputAsync($"Starting ReloadEach for {projects.Count} projects with {delayMs / 1000.0:0.##} second delay.");
+            string scopeLabel = reloadScope == ReloadScope.SelectedProjects ? "selected projects" : "all projects";
+            await WriteToOutputAsync($"Starting ReloadEach for {projects.Count} {scopeLabel} with {delayMs / 1000.0:0.##} second delay.");
 
             uint progressCookie = 0;
             BeginProgress(statusbar, ref progressCookie, projects.Count, "ReloadEach in progress");
@@ -202,6 +224,64 @@ namespace ReloadEach.Commands
             }
         }
 
+        private static async System.Threading.Tasks.Task<List<ProjectInfo>> GetSelectedProjectsAsync(AsyncPackage package, CancellationToken cancellationToken)
+        {
+            await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+
+            var projects = new List<ProjectInfo>();
+            var seenProjectGuids = new HashSet<Guid>();
+            var monitorSelection = await package.GetServiceAsync(typeof(SVsShellMonitorSelection)) as IVsMonitorSelection;
+            if (monitorSelection == null)
+            {
+                return projects;
+            }
+
+            IntPtr hierarchyPointer = IntPtr.Zero;
+            IntPtr selectionContainerPointer = IntPtr.Zero;
+
+            try
+            {
+                ErrorHandler.ThrowOnFailure(monitorSelection.GetCurrentSelection(out hierarchyPointer, out uint itemId, out IVsMultiItemSelect multiItemSelect, out selectionContainerPointer));
+
+                if (multiItemSelect != null)
+                {
+                    ErrorHandler.ThrowOnFailure(multiItemSelect.GetSelectionInfo(out uint itemCount, out int _));
+                    if (itemCount > 0)
+                    {
+                        var selectedItems = new VSITEMSELECTION[itemCount];
+                        ErrorHandler.ThrowOnFailure(multiItemSelect.GetSelectedItems(0, itemCount, selectedItems));
+
+                        foreach (VSITEMSELECTION selectedItem in selectedItems)
+                        {
+                            TryAddProject(selectedItem.pHier, projects, seenProjectGuids);
+                        }
+                    }
+
+                    return projects;
+                }
+
+                if (hierarchyPointer != IntPtr.Zero)
+                {
+                    var hierarchy = Marshal.GetObjectForIUnknown(hierarchyPointer) as IVsHierarchy;
+                    TryAddProject(hierarchy, projects, seenProjectGuids);
+                }
+            }
+            finally
+            {
+                if (hierarchyPointer != IntPtr.Zero)
+                {
+                    Marshal.Release(hierarchyPointer);
+                }
+
+                if (selectionContainerPointer != IntPtr.Zero)
+                {
+                    Marshal.Release(selectionContainerPointer);
+                }
+            }
+
+            return projects;
+        }
+
         private static async System.Threading.Tasks.Task<List<ProjectInfo>> GetProjectsAsync(IVsSolution solution, CancellationToken cancellationToken)
         {
             await ThreadHelper.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
@@ -233,16 +313,29 @@ namespace ReloadEach.Commands
                     continue;
                 }
 
-                if (!TryGetProjectGuid(hierarchy, out Guid projectGuid))
-                {
-                    continue;
-                }
-
-                string name = GetProjectName(hierarchy) ?? projectGuid.ToString();
-                projects.Add(new ProjectInfo(projectGuid, name));
+                TryAddProject(hierarchy, projects, null);
             }
 
             return projects;
+        }
+
+        private static bool TryAddProject(IVsHierarchy hierarchy, List<ProjectInfo> projects, HashSet<Guid> seenProjectGuids)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+
+            if (hierarchy == null || !TryGetProjectGuid(hierarchy, out Guid projectGuid))
+            {
+                return false;
+            }
+
+            if (seenProjectGuids != null && !seenProjectGuids.Add(projectGuid))
+            {
+                return false;
+            }
+
+            string name = GetProjectName(hierarchy) ?? projectGuid.ToString();
+            projects.Add(new ProjectInfo(projectGuid, name));
+            return true;
         }
 
         private static bool TryGetProjectGuid(IVsHierarchy hierarchy, out Guid projectGuid)
@@ -353,6 +446,12 @@ namespace ReloadEach.Commands
 
             public Guid ProjectGuid { get; }
             public string Name { get; }
+        }
+
+        private enum ReloadScope
+        {
+            AllProjects,
+            SelectedProjects
         }
     }
 }

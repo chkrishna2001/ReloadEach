@@ -15,5 +15,6 @@ namespace ReloadEach.Options
             get => delaySeconds;
             set => delaySeconds = value < 0 ? 0 : value;
         }
+
     }
 }
